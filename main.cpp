@@ -3,6 +3,7 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <string.h>
+#include <fstream>
 
 int main()
 {
@@ -14,13 +15,22 @@ int main()
 	int	socketfd = socket(AF_INET, SOCK_STREAM, 0);
 	int socketfd_client;
 
-	bind(socketfd, (struct sockaddr *)&serverAddress, sizeof(sockaddr_in));
-	listen(socketfd, 2);
+	int opt = 1;
+	setsockopt(socketfd, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(int));
+	
+	if (bind(socketfd, (struct sockaddr *)&serverAddress, sizeof(sockaddr_in)) < 0)
+		std::cout << "Error : couldn't bind" << std::endl;
+	if (listen(socketfd, 2) < 0)
+		std::cout << "Error : couldn't listen" << std::endl;
 	printf("listening on port 8080\n");
 	socketfd_client = accept(socketfd, nullptr, nullptr);
 	
-	std::string response = "HTTP/1.0 200 OK\r\n\r\n<html><head>Bonjour depuis ton serveur C !</head><body><h1>On va bien s'amuser sur webserv :)</h1></body></html>";
-	send(socketfd_client, response.c_str(), strlen(response.c_str()), 0);
+	std::ifstream	textfile;
+	textfile.open("text.html");
+	std::string file_response;
+	std::getline(textfile, file_response, '\0');
+	std::string response = "HTTP/1.0 200 OK\r\n\r\n" + file_response;
+	send(socketfd_client, response.c_str(), response.size(), 0);
 
 	close(socketfd_client);
 	close(socketfd);
